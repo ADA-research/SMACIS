@@ -6,6 +6,8 @@ from enum import Enum
 
 import numpy as np
 
+import scipy.stats as st
+
 from smac.optimizer.epm_configuration_chooser import EPMChooser
 
 from smac.stats.stats import Stats
@@ -350,8 +352,23 @@ class AbstractRacer(object):
         chal_perf = run_history.average_cost(challenger, to_compare_runs)
         inc_perf = run_history.average_cost(incumbent, to_compare_runs)
 
+        #TODO: introduce wilcoxon test here
+        incumbent_is_better = False
+        if len(chall_runs) >= self.minR:
+            # print(f"\t[Wilcoxon] minR:{self.minR} chall_runs:{len(chall_runs)}", end=" ")
+
+            chall_costs = run_history.get_instance_costs_for_config(challenger)
+            inc_costs = run_history.get_instance_costs_for_config(incumbent)
+            diffs = [chall_costs[a.instance] - inc_costs[a.instance] for a in to_compare_runs]
+            if any(x > 0 for x in diffs):
+                _, p_stop = st.wilcoxon(diffs)
+                if 1 - p_stop >= .95:
+                    incumbent_is_better = inc_perf < chal_perf
+                # print(f"P[different]={1-p_stop}")
+
         # Line 15
-        if chal_perf > inc_perf and len(chall_runs) >= self.minR:
+        # if chal_perf > inc_perf and len(chall_runs) >= self.minR:
+        if incumbent_is_better:
             # Incumbent beats challenger
             self.logger.debug("Incumbent (%.4f) is better than challenger "
                               "(%.4f) on %d runs." %
