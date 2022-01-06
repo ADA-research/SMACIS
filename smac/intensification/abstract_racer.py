@@ -1,6 +1,7 @@
 import logging
 import typing
 import time
+import warnings
 from collections import OrderedDict
 from enum import Enum
 
@@ -352,16 +353,19 @@ class AbstractRacer(object):
         chal_perf = run_history.average_cost(challenger, to_compare_runs)
         inc_perf = run_history.average_cost(incumbent, to_compare_runs)
 
-        #TODO: introduce wilcoxon test here
+        # TODO: resolve user warning: sample size too small for normal approximation
+        # TODO: 5 is hardcoded, minR seems to not get through from scenario to this object
         incumbent_is_better = False
-        if len(chall_runs) >= self.minR:
+        if len(chall_runs) >= max(self.minR, 5):
             # print(f"\t[Wilcoxon] minR:{self.minR} chall_runs:{len(chall_runs)}", end=" ")
 
             chall_costs = run_history.get_instance_costs_for_config(challenger)
             inc_costs = run_history.get_instance_costs_for_config(incumbent)
             diffs = [chall_costs[a.instance] - inc_costs[a.instance] for a in to_compare_runs]
             if any(x > 0 for x in diffs):
-                _, p_stop = st.wilcoxon(diffs)
+                with warnings.catch_warnings():
+                    warnings.simplefilter(action='ignore', category=UserWarning)
+                    _, p_stop = st.wilcoxon(diffs)
                 if 1 - p_stop >= .95:
                     incumbent_is_better = inc_perf < chal_perf
                 # print(f"P[different]={1-p_stop}")
