@@ -47,6 +47,12 @@ class IntensifierStage(Enum):
     PROCESS_FIRST_CONFIG_RUN = 4
     PROCESS_INCUMBENT_RUN = 5
 
+class Level1InstanceSelection(Enum):
+    VARIANCE = 0
+    DISCRIMINATION = 1
+    UNCERTAINTY = 2
+    RANDOM = 3
+
 
 class Intensifier(AbstractRacer):
     """ Races challengers against an incumbent
@@ -103,7 +109,8 @@ class Intensifier(AbstractRacer):
                  minR: int = 1,
                  maxR: int = 2000,
                  adaptive_capping_slackfactor: float = 1.2,
-                 min_chall: int = 2,):
+                 min_chall: int = 2,
+                 level1_instance_selection: Level1InstanceSelection = Level1InstanceSelection.RANDOM):
         """ Creates an Intensifier object
 
         Parameters
@@ -155,7 +162,8 @@ class Intensifier(AbstractRacer):
                          minR=minR,
                          maxR=maxR,
                          adaptive_capping_slackfactor=adaptive_capping_slackfactor,
-                         min_chall=min_chall,)
+                         min_chall=min_chall,
+                         )
 
         self.logger = logging.getLogger(
             self.__module__ + "." + self.__class__.__name__)
@@ -163,6 +171,8 @@ class Intensifier(AbstractRacer):
         # general attributes
         self.run_limit = run_limit
         self.always_race_against = always_race_against
+
+        self.level1_instance_selection = level1_instance_selection
 
         if self.run_limit < 1:
             raise ValueError("run_limit must be > 1")
@@ -611,6 +621,7 @@ class Intensifier(AbstractRacer):
 
         """
         # Line 5 - and avoid https://github.com/numpy/numpy/issues/10791
+        #TODO: Change to instance selection
         _idx = self.rs.choice(len(available_insts))
         next_instance = available_insts[_idx]
 
@@ -657,6 +668,7 @@ class Intensifier(AbstractRacer):
         """
         # Line 4
         # find all instances that have the most runs on the inc
+        #TODO: check if we should also adapt this
         inc_runs = run_history.get_runs_for_config(
             incumbent,
             only_max_observed_budget=True
@@ -677,6 +689,7 @@ class Intensifier(AbstractRacer):
         # from the complete set again
         if not self.deterministic and not available_insts:
             available_insts = self.instances
+        # print("\t[DEBUG]Pending instances:", available_insts)
         return available_insts
 
     def _process_inc_run(self,
@@ -920,7 +933,17 @@ class Intensifier(AbstractRacer):
         missing_runs = sorted(inc_inst_seeds - chall_inst_seeds)
 
         # Line 11
-        self.rs.shuffle(missing_runs)
+        if self.level1_instance_selection == Level1InstanceSelection.RANDOM:
+            self.rs.shuffle(missing_runs)
+        elif self.level1_instance_selection == Level1InstanceSelection.VARIANCE:
+            missing_runs = sorted(missing_runs, key=lambda run: np.var([run_history.average_cost(config, run.instance) for config in run_history.get_all_configs()]), reverse=True)
+        elif self.level1_instance_selection == Level1InstanceSelection.DISCRIMINATION:
+            min_costs = {run: min(run_history.average_cost(config, run.instance) for config in run_history.get_all_configs()) for run in missing_runs}
+            missing_runs = sorted(missing_runs, key=lambda run: len(
+                [1 for config in run_history.get_all_configs() if run_history.average_cost(config, run.instance) >= 1.2 * min_costs[run]]), reverse=True)
+        elif self.level1_instance_selection == Level1InstanceSelection.UNCERTAINTY:
+            #TODO
+            self.rs.shuffle(missing_runs)
         if N < 0:
             raise ValueError('Argument N must not be smaller than zero, but is %s' % str(N))
         to_run = missing_runs[:min(N, len(missing_runs))]
