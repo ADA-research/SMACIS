@@ -538,7 +538,7 @@ class Intensifier(AbstractRacer):
         """
         if run_info.instance not in self._done:
             self._done[run_info.instance] = []
-        self._done[run_info.instance].append(InstSeedKey(instance=run_info.instance, seed=run_info.seed))
+        self._done[run_info.instance].append(InstSeedBudgetKey(instance=run_info.instance, seed=run_info.seed, budget=run_info.budget))
         if self.stage == IntensifierStage.PROCESS_FIRST_CONFIG_RUN:
             if incumbent is None:
                 self.logger.info(
@@ -638,7 +638,7 @@ class Intensifier(AbstractRacer):
         #TODO: Change to instance selection
         if self.level2_instance_selection == Level2InstanceSelection.VARIANCE:
             _idx = np.argmax(list(map(lambda instance: np.var(
-                [run_history.average_cost(config, self._done[instance]) for config in run_history.get_all_configs()]), available_insts)))
+                [run_history.average_cost_guaranteed(config, self._done[instance]) for config in run_history.get_all_configs()]), available_insts)))
         elif self.level2_instance_selection == Level2InstanceSelection.DISCRIMINATION:
             min_costs = {instance: min(run_history.average_cost(config, self._done[instance])
                                        for config in run_history.get_all_configs()) for instance in available_insts}
@@ -960,11 +960,12 @@ class Intensifier(AbstractRacer):
         if self.level1_instance_selection == Level1InstanceSelection.RANDOM:
             self.rs.shuffle(missing_runs)
         elif self.level1_instance_selection == Level1InstanceSelection.VARIANCE:
-            missing_runs = sorted(missing_runs, key=lambda run: np.var([run_history.average_cost(config, run.instance) for config in run_history.get_all_configs()]), reverse=True)
+            missing_runs = sorted(missing_runs, key=lambda run: np.var([run_history.average_cost_guaranteed(config, self._done[run.instance]) for config in run_history.get_all_configs()]), reverse=True)
         elif self.level1_instance_selection == Level1InstanceSelection.DISCRIMINATION:
-            min_costs = {run: min(run_history.average_cost(config, run.instance) for config in run_history.get_all_configs()) for run in missing_runs}
+            min_costs = {run: min(run_history.average_cost_guaranteed(config, run.instance)
+                                  for config in run_history.get_all_configs()) for run in missing_runs}
             missing_runs = sorted(missing_runs, key=lambda run: len(
-                [1 for config in run_history.get_all_configs() if run_history.average_cost(config, run.instance) >= 1.2 * min_costs[run]]), reverse=True)
+                [1 for config in run_history.get_all_configs() if run_history.average_cost_guaranteed(config, run.instance) >= 1.2 * min_costs[run]]), reverse=True)
         elif self.level1_instance_selection == Level1InstanceSelection.UNCERTAINTY:
             uncertainty: np.ndarray = np.zeros(len(missing_runs))
             #TODO implement uncertainty (need model)

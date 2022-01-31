@@ -674,6 +674,69 @@ class RunHistory(object):
 
         return np.nan
 
+    def average_cost_guaranteed(
+        self,
+        config: Configuration,
+        instance_seed_budget_keys: typing.Optional[typing.Iterable[InstSeedBudgetKey]] = None,
+    ) -> float:
+        """Return the average cost of a configuration.
+
+        This is the mean of costs of all instance-seed pairs.
+
+        Parameters
+        ----------
+        config : Configuration
+            Configuration to calculate objective for
+        instance_seed_budget_keys : list, optional (default=None)
+            List of tuples of instance-seeds-budget keys. If None, the run_history is
+            queried for all runs of the given configuration.
+
+        Returns
+        ----------
+        Cost: float
+            Average cost
+        """
+        costs = self._cost_guaranteed(config, instance_seed_budget_keys)
+        if costs:
+            return float(np.mean(costs))
+
+        return np.nan
+
+    def _cost_guaranteed(
+        self,
+        config: Configuration,
+        instance_seed_budget_keys: typing.Optional[typing.Iterable[InstSeedBudgetKey]] = None,
+    ) -> typing.List[float]:
+        """Return array of all costs for the given config for further calculations.
+
+        Parameters
+        ----------
+        config : Configuration
+            Configuration to calculate objective for
+        instance_seed_budget_keys : list, optional (default=None)
+            List of tuples of instance-seeds-budget keys. If None, the run_history is
+            queried for all runs of the given configuration.
+
+        Returns
+        -------
+        Costs: list
+            Array of all costs
+        """
+        try:
+            id_ = self.config_ids[config]
+        except KeyError:  # challenger was not running so far
+            return []
+
+        if instance_seed_budget_keys is None:
+            instance_seed_budget_keys = self.get_runs_for_config(config, only_max_observed_budget=True)
+
+        costs = []
+        for i, r, b in instance_seed_budget_keys:
+            k = RunKey(id_, i, r, b)
+            if k in self.data:
+                costs.append(self.data[k].cost)
+        return costs
+
     def sum_cost(
         self,
         config: Configuration,
