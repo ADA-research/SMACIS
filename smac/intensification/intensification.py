@@ -1,6 +1,6 @@
 import logging
 import typing
-from collections import Counter
+from collections import Counter, defaultdict
 from enum import Enum
 
 import numpy as np
@@ -10,6 +10,7 @@ from smac.utils.constants import MAXINT
 from smac.configspace import Configuration
 from smac.runhistory.runhistory import (
     InstSeedBudgetKey,
+    InstSeedKey,
     RunInfo,
     RunHistory,
     RunValue,
@@ -52,6 +53,12 @@ class Level1InstanceSelection(Enum):
     DISCRIMINATION = 1
     UNCERTAINTY = 2
     RANDOM = 3
+
+
+class Level2InstanceSelection(Enum):
+    VARIANCE = 0
+    DISCRIMINATION = 1
+    RANDOM = 2
 
 
 class Intensifier(AbstractRacer):
@@ -110,7 +117,8 @@ class Intensifier(AbstractRacer):
                  maxR: int = 2000,
                  adaptive_capping_slackfactor: float = 1.2,
                  min_chall: int = 2,
-                 level1_instance_selection: Level1InstanceSelection = Level1InstanceSelection.RANDOM):
+                 level1_instance_selection: Level1InstanceSelection = Level1InstanceSelection.RANDOM,
+                 level2_instance_selection: Level2InstanceSelection = Level2InstanceSelection.RANDOM):
         """ Creates an Intensifier object
 
         Parameters
@@ -173,6 +181,8 @@ class Intensifier(AbstractRacer):
         self.always_race_against = always_race_against
 
         self.level1_instance_selection = level1_instance_selection
+        self.level2_instance_selection = level2_instance_selection
+        self._done: typing.Dict[str, typing.List[InstSeedBudgetKey]] = defaultdict(lambda: [])
 
         if self.run_limit < 1:
             raise ValueError("run_limit must be > 1")
@@ -312,7 +322,7 @@ class Intensifier(AbstractRacer):
             available_insts = self._get_inc_available_inst(incumbent, run_history)
             if available_insts and len(inc_runs) < self.maxR:
                 # Lines 5-6-7
-                instance, seed, cutoff = self._get_next_inc_run(available_insts)
+                instance, seed, cutoff = self._get_next_inc_run(available_insts, run_history)
 
                 instance_specific = "0"
                 if instance is not None:
@@ -526,6 +536,9 @@ class Intensifier(AbstractRacer):
         inc_perf: float
             empirical performance of incumbent configuration
         """
+        if run_info.instance not in self._done:
+            self._done[run_info.instance] = []
+        self._done[run_info.instance].append(InstSeedKey(instance=run_info.instance, seed=run_info.seed))
         if self.stage == IntensifierStage.PROCESS_FIRST_CONFIG_RUN:
             if incumbent is None:
                 self.logger.info(
@@ -601,6 +614,7 @@ class Intensifier(AbstractRacer):
 
     def _get_next_inc_run(self,
                           available_insts: typing.List[str],
+                          run_history: RunHistory
                           ) -> typing.Tuple[str, int, typing.Optional[float]]:
         """Method to extract the next seed/instance in which a
         incumbent run most be evaluated.
@@ -622,8 +636,18 @@ class Intensifier(AbstractRacer):
         """
         # Line 5 - and avoid https://github.com/numpy/numpy/issues/10791
         #TODO: Change to instance selection
-        _idx = self.rs.choice(len(available_insts))
+        if self.level2_instance_selection == Level2InstanceSelection.VARIANCE:
+            _idx = np.argmax(list(map(lambda instance: np.var(
+                [run_history.average_cost(config, self._done[instance]) for config in run_history.get_all_configs()]), available_insts)))
+        elif self.level2_instance_selection == Level2InstanceSelection.DISCRIMINATION:
+            min_costs = {instance: min(run_history.average_cost(config, self._done[instance])
+                                       for config in run_history.get_all_configs()) for instance in available_insts}
+            _idx = np.argmax(list(map(lambda instance: len(
+                [1 for config in run_history.get_all_configs() if run_history.average_cost(config, instance) >= 1.2 * min_costs[instance]]), available_insts)))
+        else:
+            _idx = self.rs.choice(len(available_insts))
         next_instance = available_insts[_idx]
+        print("\t[INFO] Computing next run:", next_instance)
 
         # Line 6
         if self.deterministic:
@@ -942,7 +966,12 @@ class Intensifier(AbstractRacer):
             missing_runs = sorted(missing_runs, key=lambda run: len(
                 [1 for config in run_history.get_all_configs() if run_history.average_cost(config, run.instance) >= 1.2 * min_costs[run]]), reverse=True)
         elif self.level1_instance_selection == Level1InstanceSelection.UNCERTAINTY:
-            #TODO
+            uncertainty: np.ndarray = np.zeros(len(missing_runs))
+            #TODO implement uncertainty (need model)
+            # for instance in selectables_instances:
+            #     self.
+            #     _, var = model.predict(challenger_configuration, instance)
+            #     uncertainty[instance] = var
             self.rs.shuffle(missing_runs)
         if N < 0:
             raise ValueError('Argument N must not be smaller than zero, but is %s' % str(N))
