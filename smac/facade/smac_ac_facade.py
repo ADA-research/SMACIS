@@ -30,7 +30,7 @@ from smac.initial_design.factorial_design import FactorialInitialDesign
 from smac.initial_design.sobol_design import SobolDesign
 
 # intensification
-from smac.intensification.intensification import Intensifier
+from smac.intensification.intensification import Intensifier, Level1InstanceSelection, Level2InstanceSelection
 from smac.intensification.successive_halving import SuccessiveHalving
 from smac.intensification.hyperband import Hyperband
 from smac.intensification.abstract_racer import AbstractRacer
@@ -438,7 +438,9 @@ class SMAC4AC(object):
                 intensifier_def_kwargs['use_ta_time_bound'] = scenario.use_ta_time  # type: ignore[attr-defined] # noqa F821
                 intensifier_def_kwargs['minR'] = scenario.minR  # type: ignore[attr-defined] # noqa F821
                 intensifier_def_kwargs['maxR'] = scenario.maxR  # type: ignore[attr-defined] # noqa F821
-
+                # Add mode
+                intensifier_def_kwargs['level1_instance_selection'] = list(Level1InstanceSelection.__members__.values())[scenario.level1]
+                intensifier_def_kwargs['level2_instance_selection'] = list(Level2InstanceSelection.__members__.values())[scenario.level2]
             if intensifier_kwargs is not None:
                 intensifier_def_kwargs.update(intensifier_kwargs)
 

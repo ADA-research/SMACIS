@@ -746,6 +746,17 @@ class CMDReader(object):
         scen_opts.add_argument('--cs',
                                default=None,  # ConfigSpace object, overridden by --paramfile
                                help=SUPPRESS)
+        from smac.intensification.intensification import Level1InstanceSelection, Level2InstanceSelection
+        scen_opts.add_argument('--level1',
+                               default=0,
+                               type=int,
+                               choices=range(len(list(Level1InstanceSelection.__members__.values()))),
+                               help="level 1 instance selection")
+        scen_opts.add_argument('--level2',
+                               default=0,
+                               type=int,
+                               choices=range(len(list(Level2InstanceSelection.__members__.values()))),
+                               help="level 2 instance selection")
 
         self.parser.add_parser(self.scen_parser)
         self.scen_cmd_actions, self.scen_cmd_translations = CMDReader._extract_action_info(self.scen_parser._actions)
