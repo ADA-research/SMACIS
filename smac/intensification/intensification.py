@@ -49,16 +49,16 @@ class IntensifierStage(Enum):
     PROCESS_INCUMBENT_RUN = 5
 
 class Level1InstanceSelection(Enum):
-    VARIANCE = 0
-    DISCRIMINATION = 1
-    UNCERTAINTY = 2
-    RANDOM = 3
+    RANDOM = 0
+    VARIANCE = 1
+    DISCRIMINATION = 2
+    UNCERTAINTY = 3
 
 
 class Level2InstanceSelection(Enum):
-    VARIANCE = 0
-    DISCRIMINATION = 1
-    RANDOM = 2
+    RANDOM = 0
+    VARIANCE = 1
+    DISCRIMINATION = 2
 
 
 class Intensifier(AbstractRacer):
