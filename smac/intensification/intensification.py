@@ -976,12 +976,24 @@ class Intensifier(AbstractRacer):
         if self.level1_instance_selection == Level1InstanceSelection.RANDOM:
             self.rs.shuffle(missing_runs)
         elif self.level1_instance_selection == Level1InstanceSelection.VARIANCE:
-            missing_runs = sorted(missing_runs, key=lambda run: np.var([run_history.average_cost_guaranteed(config, self._done[run.instance]) for config in run_history.get_all_configs()]), reverse=True)
+            scores = {}
+            for run in missing_runs:
+                l = [run_history.average_cost_guaranteed(config, self._done[run.instance]) for config in run_history.get_all_configs()]
+                if l:
+                    scores[run] = np.var(run) / np.mean(run)
+                else:
+                    scores[run] = -1
+            missing_runs = sorted(missing_runs, key=lambda run:scores[run], reverse=True)
         elif self.level1_instance_selection == Level1InstanceSelection.DISCRIMINATION:
-            min_costs = {run: min(run_history.average_cost_guaranteed(config, run.instance)
-                                  for config in run_history.get_all_configs()) for run in missing_runs}
-            missing_runs = sorted(missing_runs, key=lambda run: len(
-                [1 for config in run_history.get_all_configs() if run_history.average_cost_guaranteed(config, run.instance) >= 1.2 * min_costs[run]]), reverse=True)
+            scores = {}
+            for run in missing_runs:
+                l = [run_history.average_cost_guaranteed(config, self._done[run.instance]) for config in run_history.get_all_configs()]
+                if l:
+                    mini = min(l)
+                    scores[run] = len([1 for cost in l if cost >= 1.2 * mini]) / np.mean(run)
+                else:
+                    scores[run] = -1
+            missing_runs = sorted(missing_runs, key=lambda run: scores[run], reverse=True)
         elif self.level1_instance_selection == Level1InstanceSelection.UNCERTAINTY:
             uncertainty: np.ndarray = np.zeros(len(missing_runs))
             #TODO implement uncertainty (need model)
@@ -1068,6 +1080,7 @@ class Intensifier(AbstractRacer):
                 self._chall_indx += 1
                 self.current_challenger = challenger
                 self.N = max(1, self.minR)
+                self.logger.debug('[N = %d]', self.N )
                 self.to_run = []
 
             return challenger, True
