@@ -614,7 +614,7 @@ class Intensifier(AbstractRacer):
 
     def _get_next_inc_run(self,
                           available_insts: typing.List[str],
-                          run_history: RunHistory
+                          run_history: typing.Optional[RunHistory] = None
                           ) -> typing.Tuple[str, int, typing.Optional[float]]:
         """Method to extract the next seed/instance in which a
         incumbent run most be evaluated.
@@ -636,16 +636,19 @@ class Intensifier(AbstractRacer):
         """
         # Line 5 - and avoid https://github.com/numpy/numpy/issues/10791
         #TODO: Change to instance selection
-        if self.level2_instance_selection == Level2InstanceSelection.VARIANCE:
-            _idx = np.argmax(list(map(lambda instance: np.var(
-                [run_history.average_cost_guaranteed(config, self._done[instance]) for config in run_history.get_all_configs()]), available_insts)))
-        elif self.level2_instance_selection == Level2InstanceSelection.DISCRIMINATION:
-            min_costs = {instance: min(run_history.average_cost(config, self._done[instance])
-                                       for config in run_history.get_all_configs()) for instance in available_insts}
-            _idx = np.argmax(list(map(lambda instance: len(
-                [1 for config in run_history.get_all_configs() if run_history.average_cost(config, instance) >= 1.2 * min_costs[instance]]), available_insts)))
-        else:
+        if run_history is None:
             _idx = self.rs.choice(len(available_insts))
+        else:
+            if self.level2_instance_selection == Level2InstanceSelection.VARIANCE:
+                _idx = np.argmax(list(map(lambda instance: np.var(
+                    [run_history.average_cost_guaranteed(config, self._done[instance]) for config in run_history.get_all_configs()]), available_insts)))
+            elif self.level2_instance_selection == Level2InstanceSelection.DISCRIMINATION:
+                min_costs = {instance: min(run_history.average_cost(config, self._done[instance])
+                                        for config in run_history.get_all_configs()) for instance in available_insts}
+                _idx = np.argmax(list(map(lambda instance: len(
+                    [1 for config in run_history.get_all_configs() if run_history.average_cost(config, instance) >= 1.2 * min_costs[instance]]), available_insts)))
+            else:
+                _idx = self.rs.choice(len(available_insts))
         next_instance = available_insts[_idx]
         print("\t[INFO] Computing next run:", next_instance)
 
@@ -914,7 +917,7 @@ class Intensifier(AbstractRacer):
                 self.N = 2 * self.N
                 self.continue_challenger = True
                 self.logger.debug('Estimated cost of challenger on %d runs: %.4f, adding %d runs to the queue',
-                                  len(chal_runs), chal_perf, self.N / 2)
+                                  len(chal_runs), chal_perf, self.N // 2)
         else:
             self.logger.debug('Estimated cost of challenger on %d runs: %.4f, still %d runs to go (continue racing)',
                               len(chal_runs), chal_perf, len(self.to_run))
