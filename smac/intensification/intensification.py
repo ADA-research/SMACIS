@@ -639,14 +639,27 @@ class Intensifier(AbstractRacer):
         if run_history is None:
             _idx = self.rs.choice(len(available_insts))
         else:
+            _idx = 0
+            current_score = -1
             if self.level2_instance_selection == Level2InstanceSelection.VARIANCE:
-                _idx = np.argmax(list(map(lambda instance: np.var(
-                    [run_history.average_cost_guaranteed(config, self._done[instance]) for config in run_history.get_all_configs()]), available_insts)))
+                for idx, instance in enumerate(available_insts):
+                    l = []
+                    for config in run_history.get_all_configs():
+                        l.append(run_history.average_cost_guaranteed(config, self._done[instance]))
+                    if l:
+                        score = np.var(l) / np.mean(l)
+                        if score > current_score:
+                            _idx = idx
             elif self.level2_instance_selection == Level2InstanceSelection.DISCRIMINATION:
-                min_costs = {instance: min(run_history.average_cost(config, self._done[instance])
-                                        for config in run_history.get_all_configs()) for instance in available_insts}
-                _idx = np.argmax(list(map(lambda instance: len(
-                    [1 for config in run_history.get_all_configs() if run_history.average_cost(config, instance) >= 1.2 * min_costs[instance]]), available_insts)))
+                for idx, instance in enumerate(available_insts):
+                    costs_for_instance = list(run_history.average_cost(config, self._done[instance])
+                                        for config in run_history.get_all_configs())
+                    if costs_for_instance:
+                        mini = min(costs_for_instance)
+                        mean_cost = np.mean(costs_for_instance)
+                        score = len([1 for cost in costs_for_instance if cost >= 1.2 * mini]) / mean_cost
+                        if score > current_score:
+                            _idx = idx
             else:
                 _idx = self.rs.choice(len(available_insts))
         next_instance = available_insts[_idx]
