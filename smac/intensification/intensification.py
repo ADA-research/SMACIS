@@ -980,7 +980,7 @@ class Intensifier(AbstractRacer):
             for run in missing_runs:
                 l = [run_history.average_cost_guaranteed(config, self._done[run.instance]) for config in run_history.get_all_configs()]
                 if l:
-                    scores[run] = np.var(run) / np.mean(run)
+                    scores[run] = np.var(l) / np.mean(l)
                 else:
                     scores[run] = -1
             missing_runs = sorted(missing_runs, key=lambda run:scores[run], reverse=True)
@@ -990,7 +990,7 @@ class Intensifier(AbstractRacer):
                 l = [run_history.average_cost_guaranteed(config, self._done[run.instance]) for config in run_history.get_all_configs()]
                 if l:
                     mini = min(l)
-                    scores[run] = len([1 for cost in l if cost >= 1.2 * mini]) / np.mean(run)
+                    scores[run] = len([1 for cost in l if cost >= 1.2 * mini]) / np.mean(l)
                 else:
                     scores[run] = -1
             missing_runs = sorted(missing_runs, key=lambda run: scores[run], reverse=True)
