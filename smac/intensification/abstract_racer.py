@@ -356,7 +356,7 @@ class AbstractRacer(object):
         # TODO: resolve user warning: sample size too small for normal approximation
         # TODO: 5 is hardcoded, minR seems to not get through from scenario to this object
         incumbent_is_better = False
-        if len(chall_runs) >= max(self.minR, 5):
+        if len(chall_runs) >= max(self.minR, 5) and inc_perf < chal_perf:
             # print(f"\t[Wilcoxon] minR:{self.minR} chall_runs:{len(chall_runs)}", end=" ")
 
             chall_costs = run_history.get_instance_costs_for_config(challenger)
@@ -365,7 +365,7 @@ class AbstractRacer(object):
             if any(x > 0 for x in diffs):
                 with warnings.catch_warnings():
                     warnings.simplefilter(action='ignore', category=UserWarning)
-                    _, p_stop = st.wilcoxon(diffs)
+                    _, p_stop = st.wilcoxon(diffs, alternative="two-sided")
                 if 1 - p_stop >= .95:
                     incumbent_is_better = inc_perf < chal_perf
                 # print(f"P[different]={1-p_stop}")
