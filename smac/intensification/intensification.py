@@ -1,18 +1,21 @@
 import logging
 import typing
-from collections import Counter, defaultdict
+from collections import Counter, defaultdict, namedtuple
 from enum import Enum
 
 import numpy as np
+from smac.epm.rf_with_instances import RandomForestWithInstances
+from smac.scenario.scenario import Scenario
 
 from smac.stats.stats import Stats
 from smac.utils.constants import MAXINT
-from smac.configspace import Configuration
+from smac.configspace import Configuration, convert_configurations_to_array
 from smac.runhistory.runhistory import (
     InstSeedBudgetKey,
     InstSeedKey,
     RunInfo,
     RunHistory,
+    RunKey,
     RunValue,
     StatusType
 )
@@ -53,6 +56,9 @@ class Level1InstanceSelection(Enum):
     VARIANCE = 1
     DISCRIMINATION = 2
     UNCERTAINTY = 3
+    UDD = 4
+
+_Run = namedtuple('Run', 'config inst seed inst_specs')
 
 
 class Level2InstanceSelection(Enum):
@@ -118,7 +124,9 @@ class Intensifier(AbstractRacer):
                  adaptive_capping_slackfactor: float = 1.2,
                  min_chall: int = 2,
                  level1_instance_selection: Level1InstanceSelection = Level1InstanceSelection.RANDOM,
-                 level2_instance_selection: Level2InstanceSelection = Level2InstanceSelection.RANDOM):
+                 level2_instance_selection: Level2InstanceSelection = Level2InstanceSelection.RANDOM,
+                 model: typing.Optional[RandomForestWithInstances] = None,
+                 scenario: typing.Optional[Scenario] = None):
         """ Creates an Intensifier object
 
         Parameters
@@ -183,6 +191,13 @@ class Intensifier(AbstractRacer):
         self.level1_instance_selection = level1_instance_selection
         self.level2_instance_selection = level2_instance_selection
         self._done: typing.Dict[str, typing.List[InstSeedBudgetKey]] = defaultdict(lambda: [])
+
+        if self.level1_instance_selection.value >= Level1InstanceSelection.UNCERTAINTY.value:
+            assert scenario
+            assert model
+        self.scen = scenario
+
+        self.model = model
 
         if self.run_limit < 1:
             raise ValueError("run_limit must be > 1")
@@ -663,7 +678,7 @@ class Intensifier(AbstractRacer):
             else:
                 _idx = self.rs.choice(len(available_insts))
         next_instance = available_insts[_idx]
-        print("\t[INFO] Computing next run:", next_instance)
+        # print("\t[INFO] Computing next run:", next_instance)
 
         # Line 6
         if self.deterministic:
@@ -937,6 +952,62 @@ class Intensifier(AbstractRacer):
 
         return incumbent
 
+
+    def _get_runs(self,
+                  configs: typing.Union[str, typing.List[Configuration]],
+                  partial_runs: typing.List[InstSeedBudgetKey],
+                  ) -> typing.List[_Run]:
+        """ Generate list of SMAC-TAE runs to be executed. This means
+        combinations of configs with all instances on a certain number of seeds.
+
+        side effect: Adds runs that don't need to be reevaluated to self.rh!
+
+        Parameters
+        ----------
+        configs: str or list<Configuration>
+            string or directly a list of Configuration
+            str from [def, inc, def+inc, wallclock_time, cpu_time, all]
+            time evaluates at cpu- or wallclock-timesteps of:
+            [max_time/2^0, max_time/2^1, max_time/2^3, ..., default]
+            with max_time being the highest recorded time
+        insts: str or list<str>
+            what instances to use for validation, either from
+            [train, test, train+test] or directly a list of instances
+        repetitions: int
+            number of seeds per instance/config-pair to be evaluated
+        runhistory: RunHistory
+            optional, try to reuse this runhistory and save some runs
+
+        Returns
+        -------
+        runs: list<_Run>
+            list with _Runs
+            [_Run(config=CONFIG1,inst=INSTANCE1,seed=SEED1,inst_specs=INST_SPECIFICS1),
+             _Run(config=CONFIG2,inst=INSTANCE2,seed=SEED2,inst_specs=INST_SPECIFICS2),
+             ...]
+        """
+        # Now create the actual run-list
+        runs = []
+
+        for r in partial_runs:
+            configs_evaluated = []  # type: Configuration
+            # If no runhistory or no entries for instance, get new seed
+            seed = r.seed
+            i = r.instance 
+
+            # We now have a seed and add all configs that are not already
+            # evaluated on that seed to the runs-list. This way, we
+            # guarantee the same inst-seed-pairs for all configs.
+            for config in [c for c in configs if c not in configs_evaluated]:
+                # Only use specifics if specific exists, else use string "0"
+                specs = self.scen.instance_specific[i] if i and i in self.scen.instance_specific else "0"
+                runs.append(_Run(config=config,
+                                 inst=i,
+                                 seed=seed,
+                                 inst_specs=specs))
+
+        return runs
+
     def _get_instances_to_run(self,
                               challenger: Configuration,
                               incumbent: Configuration,
@@ -994,14 +1065,29 @@ class Intensifier(AbstractRacer):
                 else:
                     scores[run] = -1
             missing_runs = sorted(missing_runs, key=lambda run: scores[run], reverse=True)
-        elif self.level1_instance_selection == Level1InstanceSelection.UNCERTAINTY:
-            uncertainty: np.ndarray = np.zeros(len(missing_runs))
-            #TODO implement uncertainty (need model)
-            # for instance in selectables_instances:
-            #     self.
-            #     _, var = model.predict(challenger_configuration, instance)
-            #     uncertainty[instance] = var
-            self.rs.shuffle(missing_runs)
+        elif self.level1_instance_selection.value >= Level1InstanceSelection.UNCERTAINTY.value:
+
+            runs = self._get_runs([challenger], missing_runs)
+            feature_array_size = len(self.scen.cs.get_hyperparameters())  # type: ignore[attr-defined] # noqa F821
+            if self.scen.feature_array is not None:
+                feature_array_size += self.scen.feature_array.shape[1]
+            X_pred = np.empty((len(runs), feature_array_size))
+            for idx, run in enumerate(runs):
+                if self.scen.feature_array is not None and run.inst is not None:
+                    X_pred[idx] = np.hstack([convert_configurations_to_array([run.config])[0],
+                                            self.scen.feature_dict[run.inst]])
+                else:
+                    X_pred[idx] = convert_configurations_to_array([run.config])[0]
+            y_pred = self.model.predict(X_pred)
+
+            if self.level1_instance_selection == Level1InstanceSelection.UNCERTAINTY:
+                # Assign scores
+                scores = {}
+                for run, pred in zip(missing_runs, y_pred[1]):
+                    scores[run] = float(pred)
+                missing_runs = sorted(missing_runs, key=lambda run: scores[run], reverse=True)
+                
+            
         if N < 0:
             raise ValueError('Argument N must not be smaller than zero, but is %s' % str(N))
         to_run = missing_runs[:min(N, len(missing_runs))]

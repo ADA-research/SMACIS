@@ -441,6 +441,11 @@ class SMAC4AC(object):
                 # Add mode
                 intensifier_def_kwargs['level1_instance_selection'] = list(Level1InstanceSelection.__members__.values())[scenario.level1]
                 intensifier_def_kwargs['level2_instance_selection'] = list(Level2InstanceSelection.__members__.values())[scenario.level2]
+
+                if isinstance(model_instance, RandomForestWithInstances):
+                    intensifier_def_kwargs['scenario'] = scenario
+                    intensifier_def_kwargs['model'] = model_instance
+
             if intensifier_kwargs is not None:
                 intensifier_def_kwargs.update(intensifier_kwargs)
 
