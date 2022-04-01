@@ -757,6 +757,10 @@ class CMDReader(object):
                                type=int,
                                choices=range(len(list(Level2InstanceSelection.__members__.values()))),
                                help="level 2 instance selection")
+        scen_opts.add_argument('--use-wilcoxon',
+                               dest="wilcoxon",
+                               action="store_true",
+                               help="activate wilcoxon test for comparison")
 
         self.parser.add_parser(self.scen_parser)
         self.scen_cmd_actions, self.scen_cmd_translations = CMDReader._extract_action_info(self.scen_parser._actions)

@@ -91,7 +91,8 @@ class AbstractRacer(object):
                  minR: int = 1,
                  maxR: int = 2000,
                  adaptive_capping_slackfactor: float = 1.2,
-                 min_chall: int = 1,):
+                 min_chall: int = 1,
+                 wilcoxon: bool = False):
 
         self.logger = logging.getLogger(
             self.__module__ + "." + self.__class__.__name__)
@@ -109,6 +110,8 @@ class AbstractRacer(object):
         self.maxR = maxR
         self.adaptive_capping_slackfactor = adaptive_capping_slackfactor
         self.min_chall = min_chall
+
+        self.wilcoxon = wilcoxon
 
         # instances
         if instances is None:
@@ -356,19 +359,23 @@ class AbstractRacer(object):
         # TODO: resolve user warning: sample size too small for normal approximation
         # TODO: 5 is hardcoded, minR seems to not get through from scenario to this object
         incumbent_is_better = False
-        if len(chall_runs) >= max(self.minR, 5) and inc_perf < chal_perf:
-            # print(f"\t[Wilcoxon] minR:{self.minR} chall_runs:{len(chall_runs)}", end=" ")
+        if inc_perf < chal_perf:
+            incumbent_is_better = not self.wilcoxon and len(chall_runs) >= self.minR
 
-            chall_costs = run_history.get_instance_costs_for_config(challenger)
-            inc_costs = run_history.get_instance_costs_for_config(incumbent)
-            diffs = [chall_costs[a.instance] - inc_costs[a.instance] for a in to_compare_runs]
-            if any(x > 0 for x in diffs):
-                with warnings.catch_warnings():
-                    warnings.simplefilter(action='ignore', category=UserWarning)
-                    _, p_stop = st.wilcoxon(diffs, alternative="two-sided")
-                if 1 - p_stop >= .95:
-                    incumbent_is_better = inc_perf < chal_perf
-                # print(f"P[different]={1-p_stop}")
+            if self.wilcoxon and len(chall_runs) >= max(self.minR, 5):
+                
+                # print(f"\t[Wilcoxon] minR:{self.minR} chall_runs:{len(chall_runs)}", end=" ")
+
+                chall_costs = run_history.get_instance_costs_for_config(challenger)
+                inc_costs = run_history.get_instance_costs_for_config(incumbent)
+                diffs = [chall_costs[a.instance] - inc_costs[a.instance] for a in to_compare_runs]
+                if any(x > 0 for x in diffs):
+                    with warnings.catch_warnings():
+                        warnings.simplefilter(action='ignore', category=UserWarning)
+                        _, p_stop = st.wilcoxon(diffs, alternative="two-sided")
+                    if 1 - p_stop >= .95:
+                        incumbent_is_better = inc_perf < chal_perf
+                    # print(f"P[different]={1-p_stop}")
 
         # Line 15
         # if chal_perf > inc_perf and len(chall_runs) >= self.minR:

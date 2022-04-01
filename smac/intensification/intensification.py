@@ -126,7 +126,8 @@ class Intensifier(AbstractRacer):
                  level1_instance_selection: Level1InstanceSelection = Level1InstanceSelection.RANDOM,
                  level2_instance_selection: Level2InstanceSelection = Level2InstanceSelection.RANDOM,
                  model: typing.Optional[RandomForestWithInstances] = None,
-                 scenario: typing.Optional[Scenario] = None):
+                 scenario: typing.Optional[Scenario] = None,
+                 wilcoxon: bool = False):
         """ Creates an Intensifier object
 
         Parameters
@@ -179,6 +180,7 @@ class Intensifier(AbstractRacer):
                          maxR=maxR,
                          adaptive_capping_slackfactor=adaptive_capping_slackfactor,
                          min_chall=min_chall,
+                         wilcoxon=wilcoxon
                          )
 
         self.logger = logging.getLogger(
