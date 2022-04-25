@@ -239,6 +239,7 @@ class AbstractRacer(object):
             next challenger to use
         """
         start_time = time.time()
+        self.last_update = 0
 
         used_configs = set(run_history.get_all_configs())
 
@@ -362,8 +363,8 @@ class AbstractRacer(object):
         if inc_perf < chal_perf:
             incumbent_is_better = not self.wilcoxon and len(chall_runs) >= self.minR
 
-            if self.wilcoxon and len(chall_runs) >= max(self.minR, 5):
-                
+            if self.wilcoxon and len(chall_runs) - self.last_update >= self.minR:
+                self.last_update = len(chall_runs)
                 # print(f"\t[Wilcoxon] minR:{self.minR} chall_runs:{len(chall_runs)}", end=" ")
 
                 chall_costs = run_history.get_instance_costs_for_config(challenger)
