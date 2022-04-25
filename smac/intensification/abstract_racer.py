@@ -110,6 +110,7 @@ class AbstractRacer(object):
         self.maxR = maxR
         self.adaptive_capping_slackfactor = adaptive_capping_slackfactor
         self.min_chall = min_chall
+        self.last_update = 0
 
         self.wilcoxon = wilcoxon
 
