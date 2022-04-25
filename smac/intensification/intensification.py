@@ -660,17 +660,18 @@ class Intensifier(AbstractRacer):
             current_score = -1
             if self.level2_instance_selection == Level2InstanceSelection.VARIANCE:
                 for idx, instance in enumerate(available_insts):
-                    l = []
-                    for config in run_history.get_all_configs():
-                        l.append(run_history.average_cost_guaranteed(config, self._done[instance]))
-                    if l:
-                        score = np.var(l) / np.mean(l)
+                    costs_for_instance = list(run_history.average_cost_guaranteed(config, self._done[instance])
+                                        for config in run_history.get_all_configs())
+                    costs_for_instance = [x for x in costs_for_instance if not np.isnan(x)]
+                    if costs_for_instance:
+                        score = np.var(costs_for_instance) / np.mean(costs_for_instance)
                         if score > current_score:
                             _idx = idx
             elif self.level2_instance_selection == Level2InstanceSelection.DISCRIMINATION:
                 for idx, instance in enumerate(available_insts):
-                    costs_for_instance = list(run_history.average_cost(config, self._done[instance])
+                    costs_for_instance = list(run_history.average_cost_guaranteed(config, self._done[instance])
                                         for config in run_history.get_all_configs())
+                    costs_for_instance = [x for x in costs_for_instance if not np.isnan(x)]
                     if costs_for_instance:
                         mini = min(costs_for_instance)
                         mean_cost = np.mean(costs_for_instance)
