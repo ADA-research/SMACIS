@@ -503,10 +503,10 @@ class SMAC4AC(object):
         # the RFRImputator will already get
         # log transform data from the runhistory
         if scenario.transform_y in ["LOG", "LOGS"]:  # type: ignore[attr-defined] # noqa F821
-            cutoff = np.log(np.nanmin([np.inf, np.float_(scenario.cutoff)]))  # type: ignore[attr-defined] # noqa F821
+            cutoff = np.log(np.nanmin([np.inf, float(scenario.cutoff)]))  # type: ignore[attr-defined] # noqa F821
             threshold = cutoff + np.log(scenario.par_factor)  # type: ignore[attr-defined] # noqa F821
         else:
-            cutoff = np.nanmin([np.inf, np.float_(scenario.cutoff)])  # type: ignore[attr-defined] # noqa F821
+            cutoff = np.nanmin([np.inf, float(scenario.cutoff)])  # type: ignore[attr-defined] # noqa F821
             threshold = cutoff * scenario.par_factor  # type: ignore[attr-defined] # noqa F821
         num_params = len(scenario.cs.get_hyperparameters())  # type: ignore[attr-defined] # noqa F821
         imputor = RFRImputator(rng=rng,

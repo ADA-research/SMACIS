@@ -739,7 +739,7 @@ class HammingKernel(MagicMixin, kernels.StationaryKernelMixin, kernels.Normalize
 
             # dK / dL computation
             if np.iterable(length_scale) and length_scale.shape[0] > 1:
-                grad = (np.expand_dims(K, axis=-1) * np.array(indicator, dtype=np.float32))
+                grad = (np.expand_dims(K, axis=-1) * np.array(indicator, dtype=float32))
             else:
                 grad = np.expand_dims(K * np.sum(indicator, axis=2), axis=-1)
 

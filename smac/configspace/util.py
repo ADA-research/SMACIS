@@ -21,4 +21,4 @@ def convert_configurations_to_array(configs: List[Configuration]) -> np.ndarray:
     -------
     np.ndarray
     """
-    return np.array([config.get_array() for config in configs], dtype=np.float64)
+    return np.array([config.get_array() for config in configs], dtype=float)

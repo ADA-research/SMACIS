@@ -179,7 +179,7 @@ class RFRImputator(smac.epm.base_imputor.BaseImputor):
                           (it - 1, self.max_iter, change))
 
         # replace all y > cutoff with PAR10 values (i.e., threshold)
-        imputed_y = np.array(imputed_y, dtype=np.float)
+        imputed_y = np.array(imputed_y, dtype=float)
         imputed_y[imputed_y >= self.cutoff] = self.threshold
 
         if not np.isfinite(imputed_y).all():
