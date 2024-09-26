@@ -53,4 +53,4 @@ If not, see [here](https://opensource.org/licenses/BSD-3-Clause).
 SMAC3 is developed by the [AutoML Groups of the Universities of Hannover and
 Freiburg](http://www.automl.org/).
 
-SMAC-IS is developed in a collaboration between the ADA-research group at Leiden university and RWTH Aachen university, and the Labri at the university of Bordeau
+SMAC-IS is developed in a collaboration between the ADA-research group at Leiden university and RWTH Aachen university, and the Labri at the university of Bordeaux.
