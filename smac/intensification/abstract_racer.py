@@ -353,6 +353,8 @@ class AbstractRacer(object):
         inc_runs = run_history.get_runs_for_config(incumbent, only_max_observed_budget=True)
         chall_runs = run_history.get_runs_for_config(challenger, only_max_observed_budget=True)
         to_compare_runs = set(inc_runs).intersection(chall_runs)
+        batch_size=(max(self.minR, int(len(inc_runs)/5)))
+        nb_test=int(len(inc_runs)/batch_size)
 
         # performance on challenger runs
         chal_perf = run_history.average_cost(challenger, to_compare_runs)
@@ -364,7 +366,7 @@ class AbstractRacer(object):
         if inc_perf < chal_perf:
             incumbent_is_better = not self.wilcoxon and len(chall_runs) >= self.minR
 
-            if self.wilcoxon and len(chall_runs) - self.last_update >= self.minR:
+            if self.wilcoxon and len(chall_runs) - self.last_update >= batch_size:
                 self.last_update = len(chall_runs)
                 # print(f"\t[Wilcoxon] minR:{self.minR} chall_runs:{len(chall_runs)}", end=" ")
 
@@ -375,7 +377,7 @@ class AbstractRacer(object):
                     with warnings.catch_warnings():
                         warnings.simplefilter(action='ignore', category=UserWarning)
                         _, p_stop = st.wilcoxon(diffs, alternative="two-sided")
-                    if 1 - p_stop >= .95:
+                    if 1 - p_stop * nb_test >= .95: #applying Bonferroni multiple test correction
                         incumbent_is_better = inc_perf < chal_perf
                     # print(f"P[different]={1-p_stop}")
 
