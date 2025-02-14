@@ -21,19 +21,12 @@ Install swig:
 conda install gxx_linux-64 gcc_linux-64 swig
 ```
 
-Install SMAC via PyPI:
+clone the environment:
 ```
-pip install smac
-```
-
-Or alternatively, clone the environment:
-```
-git clone https://github.com/automl/SMAC3.git && cd SMAC3
+git clone https://github.com/ADA-research/SMAC3IS.git && cd SMACIS
 pip install -r requirements.txt
 pip install .
 ```
-
-We refer to the [documention](https://automl.github.io/SMAC3) for further installation options.
 
 ## License
 
