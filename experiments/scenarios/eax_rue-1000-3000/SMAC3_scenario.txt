@@ -1,0 +1,9 @@
+algo = python3 -u /storage/work/anastacio/ac-comparison/benchmarks/solvers/eax/wrapper.py --sol-file /storage/work/anastacio/ac-comparison/benchmarks/instances/tsp/sets/tsp-rue-1000-3000/optimum-RUE.txt
+pcs-file = /storage/work/anastacio/ac-comparison/benchmarks/solvers/eax/params.pcs
+deterministic = 0
+run_obj = runtime
+algo-cutoff-time = 86
+wallclock-limit = 86400
+feature-file = /storage/work/anastacio/ac-comparison/benchmarks/instances/tsp/sets/tsp-rue-1000-3000/features.txt
+instances = /storage/work/anastacio/ac-comparison/benchmarks/instances/tsp/sets/tsp-rue-1000-3000/training.txt
+test-instances = /storage/work/anastacio/ac-comparison/benchmarks/instances/tsp/sets/tsp-rue-1000-3000/test.txt

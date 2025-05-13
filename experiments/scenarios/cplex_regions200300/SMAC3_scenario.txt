@@ -1,0 +1,9 @@
+algo = python /storage/work/anastacio/ac-comparison/benchmarks/solvers/cplex/wrapper.py --mem-limit 3000 --obj-file /storage/work/anastacio/ac-comparison/benchmarks/instances/mip/sets/Regions200/solubility.txt
+deterministic = 1
+run_obj = runtime
+algo-cutoff-time = 300
+wallclock-limit = 172800
+pcs-file = /storage/work/anastacio/ac-comparison/benchmarks/solvers/cplex/params.pcs
+instances = /storage/work/anastacio/ac-comparison/benchmarks/instances/mip/sets/Regions200/training.txt
+test-instances = /storage/work/anastacio/ac-comparison/benchmarks/instances/mip/sets/Regions200/test.txt
+feature-file = /storage/work/anastacio/ac-comparison/benchmarks/instances/mip/sets/Regions200/features.txt

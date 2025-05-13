@@ -1,0 +1,6 @@
+-Nch '30' -Npop '100'
+-Nch '23' -Npop '129'
+-Nch '34' -Npop '101'
+-Nch '48' -Npop '96'
+-Nch '16' -Npop '238'
+-Nch '30' -Npop '111'
